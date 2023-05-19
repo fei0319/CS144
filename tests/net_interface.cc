@@ -27,7 +27,7 @@ InternetDatagram make_datagram( const string& src_ip, const string& dst_ip ) // 
   dgram.header.src = Address( src_ip, 0 ).ipv4_numeric();
   dgram.header.dst = Address( dst_ip, 0 ).ipv4_numeric();
   dgram.payload.emplace_back( "hello" );
-  dgram.header.len = static_cast<uint64_t>( dgram.header.hlen ) * 4 + dgram.payload.size();
+  dgram.header.len = static_cast<uint64_t>( dgram.header.hlen ) * 4 + dgram.payload.front().size();
   dgram.header.compute_checksum();
   return dgram;
 }

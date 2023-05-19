@@ -135,6 +135,14 @@ struct Tick : public Action<NetworkInterface>
   explicit Tick( const size_t ms ) : _ms( ms ) {}
 };
 
+inline std::string concat( std::vector<Buffer>& buffers )
+{
+  return std::accumulate(
+    buffers.begin(), buffers.end(), std::string {}, []( const std::string& x, const Buffer& y ) {
+      return x + static_cast<std::string>( y );
+    } );
+}
+
 inline std::string summary( const EthernetFrame& frame )
 {
   std::string out = frame.header.to_string() + ", payload: ";
@@ -142,7 +150,8 @@ inline std::string summary( const EthernetFrame& frame )
     case EthernetHeader::TYPE_IPv4: {
       InternetDatagram dgram;
       if ( parse( dgram, frame.payload ) ) {
-        out.append( "IPv4: " + dgram.header.to_string() );
+        out.append( "IPv4: " + dgram.header.to_string() + " payload=\""
+                    + Printer::prettify( concat( dgram.payload ) ) + "\"" );
       } else {
         out.append( "bad IPv4 datagram" );
       }

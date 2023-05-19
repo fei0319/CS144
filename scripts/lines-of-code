@@ -11,7 +11,8 @@ modules = [['byte_stream', 'ByteStream'],
            ['tcp_receiver', 'TCPReceiver'],
            ['wrapping_integers', 'Wrap32'],
            ['tcp_sender', 'TCPSender'],
-           ['network_interface', 'NetworkInterface']]
+           ['network_interface', 'NetworkInterface'],
+           ['router', 'Router']]
 longest_module_length = max([len(x[1]) for x in modules])
 
 
