@@ -82,8 +82,10 @@ FileDescriptor FileDescriptor::duplicate() const
 // buffer is the string to be read into
 void FileDescriptor::read( string& buffer )
 {
-  buffer.clear();
-  buffer.resize( kReadBufferSize );
+  if ( buffer.empty() ) {
+    buffer.clear();
+    buffer.resize( kReadBufferSize );
+  }
 
   const ssize_t bytes_read = ::read( fd_num(), buffer.data(), buffer.size() );
   if ( bytes_read < 0 ) {
@@ -106,21 +108,21 @@ void FileDescriptor::read( string& buffer )
   buffer.resize( bytes_read );
 }
 
-void FileDescriptor::read( vector<unique_ptr<string>>& buffers )
+void FileDescriptor::read( vector<string>& buffers )
 {
   if ( buffers.empty() ) {
     return;
   }
 
-  buffers.back()->clear();
-  buffers.back()->resize( kReadBufferSize );
+  buffers.back().clear();
+  buffers.back().resize( kReadBufferSize );
 
   vector<iovec> iovecs;
   iovecs.reserve( buffers.size() );
   size_t total_size = 0;
   for ( const auto& x : buffers ) {
-    iovecs.push_back( { const_cast<char*>( x->data() ), x->size() } ); // NOLINT(*-const-cast)
-    total_size += x->size();
+    iovecs.push_back( { const_cast<char*>( x.data() ), x.size() } ); // NOLINT(*-const-cast)
+    total_size += x.size();
   }
 
   const ssize_t bytes_read = ::readv( fd_num(), iovecs.data(), static_cast<int>( iovecs.size() ) );
@@ -139,12 +141,10 @@ void FileDescriptor::read( vector<unique_ptr<string>>& buffers )
 
   size_t remaining_size = bytes_read;
   for ( auto& buf : buffers ) {
-    if ( remaining_size <= buf->size() ) {
-      remaining_size -= buf->size();
-    } else if ( remaining_size == 0 ) {
-      buf->clear();
+    if ( remaining_size >= buf.size() ) {
+      remaining_size -= buf.size();
     } else {
-      buf->resize( remaining_size );
+      buf.resize( remaining_size );
       remaining_size = 0;
     }
   }
@@ -153,6 +153,16 @@ void FileDescriptor::read( vector<unique_ptr<string>>& buffers )
 size_t FileDescriptor::write( string_view buffer )
 {
   return write( vector<string_view> { buffer } );
+}
+
+size_t FileDescriptor::write( const vector<Buffer>& buffers )
+{
+  vector<string_view> views;
+  views.reserve( buffers.size() );
+  for ( const auto& x : buffers ) {
+    views.push_back( x );
+  }
+  return write( views );
 }
 
 size_t FileDescriptor::write( const vector<string_view>& buffers )
