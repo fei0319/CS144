@@ -12,6 +12,23 @@ class ByteStream
 {
 protected:
   uint64_t capacity_;
+  uint64_t pushed_;
+  uint64_t popped_;
+  bool has_error_;
+  bool is_closed_;
+  class StringQueue
+  {
+    std::string data_ {};
+    uint64_t popped_ { 0 };
+
+  public:
+    StringQueue() = default;
+    uint64_t size() const; // Size of the queue.
+    void push( char c );   // Push a single byte to the queue.
+    uint64_t pop(
+      uint64_t len ); // Pop specified number of bytes, and return the number of bytes that are popped successfully.
+    std::string_view peek() const; // Return a string_view of the queue.
+  } data_;
   // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
 
 public:
