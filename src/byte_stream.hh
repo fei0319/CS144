@@ -29,7 +29,6 @@ protected:
       uint64_t len ); // Pop specified number of bytes, and return the number of bytes that are popped successfully.
     std::string_view peek() const; // Return a string_view of the queue.
   } data_;
-  // Please add any additional state to the ByteStream here, and not to the Writer and Reader interfaces.
 
 public:
   explicit ByteStream( uint64_t capacity );
