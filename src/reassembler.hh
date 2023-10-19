@@ -3,21 +3,22 @@
 #include "byte_stream.hh"
 
 #include <algorithm>
-#include <string>
 #include <cassert>
 #include <iostream>
+#include <string>
 
 class Reassembler
 {
 private:
   // The index of the first byte stored in the Reassembler.
-  uint64_t front{0};
+  uint64_t front { 0 };
   // Number of set bytes in data.
-  uint64_t bytes_valid{0};
+  uint64_t bytes_valid { 0 };
   // Whether the last substring has been inserted.
-  bool last_substring_inserted {false};
+  bool last_substring_inserted { false };
   // A pair represents validity and data of a byte.
-  std::deque<std::pair<bool, char>> buffer{};
+  std::deque<std::pair<bool, char>> buffer {};
+
 public:
   /*
    * Insert a new substring to be reassembled into a ByteStream.
