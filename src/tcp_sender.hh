@@ -32,3 +32,19 @@ public:
   uint64_t sequence_numbers_in_flight() const;  // How many sequence numbers are outstanding?
   uint64_t consecutive_retransmissions() const; // How many consecutive *re*transmissions have happened?
 };
+
+class Timer
+{
+  uint64_t timer;
+  uint64_t& RTO;
+  bool running;
+
+public:
+  explicit Timer( uint64_t& initial_RTO );
+  void elapse( uint64_t time_elapsed );
+  void double_RTO() const;
+  void reset();
+  void start();
+  void stop();
+  bool expired() const;
+};

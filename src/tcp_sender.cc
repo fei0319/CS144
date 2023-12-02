@@ -51,3 +51,41 @@ void TCPSender::tick( const size_t ms_since_last_tick )
   // Your code here.
   (void)ms_since_last_tick;
 }
+
+Timer::Timer( uint64_t& initial_RTO ) : timer( initial_RTO ), RTO( initial_RTO ), running( false ) {}
+
+void Timer::elapse( uint64_t time_elapsed )
+{
+  if ( running ) {
+    if ( time_elapsed >= timer ) {
+      timer = 0;
+    } else {
+      timer -= time_elapsed;
+    }
+  }
+}
+
+void Timer::double_RTO() const
+{
+  RTO *= 2;
+}
+
+void Timer::reset()
+{
+  timer = RTO;
+}
+
+void Timer::start()
+{
+  running = true;
+}
+
+void Timer::stop()
+{
+  running = false;
+}
+
+bool Timer::expired() const
+{
+  return timer == 0;
+}
