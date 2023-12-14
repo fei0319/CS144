@@ -24,8 +24,13 @@ uint64_t TCPSender::consecutive_retransmissions() const
 
 optional<TCPSenderMessage> TCPSender::maybe_send()
 {
-  // Your code here.
-  return {};
+  if ( !messages_to_be_sent.empty() ) {
+    auto msg = messages_to_be_sent.front();
+    messages_to_be_sent.pop();
+    outstanding_messages.push( msg );
+    return *msg;
+  }
+  return std::nullopt;
 }
 
 void TCPSender::push( Reader& outbound_stream )
@@ -49,8 +54,13 @@ void TCPSender::push( Reader& outbound_stream )
 
 TCPSenderMessage TCPSender::send_empty_message() const
 {
-  // Your code here.
-  return {};
+  TCPSenderMessage message;
+  message.seqno = Wrap32::wrap( pushed_no, isn_ );
+  message.SYN = ( pushed_no == 0 );
+  message.payload = {};
+  message.FIN = false;
+
+  return message;
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
