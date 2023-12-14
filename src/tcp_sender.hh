@@ -33,6 +33,8 @@ class TCPSender
   std::queue<std::shared_ptr<TCPSenderMessage>> messages_to_be_sent;
   std::queue<std::shared_ptr<TCPSenderMessage>> outstanding_messages;
 
+  Timer timer;
+
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( uint64_t initial_RTO_ms, std::optional<Wrap32> fixed_isn );
