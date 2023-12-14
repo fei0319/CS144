@@ -52,22 +52,22 @@ void TCPSender::tick( const size_t ms_since_last_tick )
   (void)ms_since_last_tick;
 }
 
-Timer::Timer( uint64_t& initial_RTO ) : timer( initial_RTO ), RTO( initial_RTO ), running( false ) {}
+Timer::Timer( uint64_t initial_RTO ) : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO(initial_RTO), running( false ) {}
 
 void Timer::elapse( uint64_t time_elapsed )
 {
   if ( running ) {
-    if ( time_elapsed >= timer ) {
-      timer = 0;
-    } else {
-      timer -= time_elapsed;
-    }
+    timer -= std::min(timer, time_elapsed);
   }
 }
 
-void Timer::double_RTO() const
+void Timer::double_RTO()
 {
-  RTO *= 2;
+  if (RTO & (1ULL << 63)) {
+    RTO = UINT64_MAX;
+  } else {
+    RTO <<= 1;
+  }
 }
 
 void Timer::reset()
@@ -88,4 +88,8 @@ void Timer::stop()
 bool Timer::expired() const
 {
   return timer == 0;
+}
+
+void Timer::restore_RTO() {
+  RTO = initial_RTO;
 }

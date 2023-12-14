@@ -36,15 +36,17 @@ public:
 class Timer
 {
   uint64_t timer;
-  uint64_t& RTO;
+  uint64_t initial_RTO;
+  uint64_t RTO;
   bool running;
 
 public:
-  explicit Timer( uint64_t& initial_RTO );
+  explicit Timer( uint64_t initial_RTO );
   void elapse( uint64_t time_elapsed );
-  void double_RTO() const;
+  void double_RTO();
   void reset();
   void start();
   void stop();
   bool expired() const;
+  void restore_RTO();
 };
