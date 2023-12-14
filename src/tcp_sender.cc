@@ -110,8 +110,10 @@ TCPSenderMessage TCPSender::send_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  // Your code here.
-  (void)msg;
+  if (msg.ackno.has_value()) {
+    ack_no = std::max(ack_no, msg.ackno.value().unwrap(isn_, ack_no));
+  }
+  window_size = msg.window_size;
 }
 
 void TCPSender::tick( const size_t ms_since_last_tick )
