@@ -30,8 +30,21 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  // Your code here.
-  (void)outbound_stream;
+  while ( !outbound_stream.is_finished() && pushed_no < ack_no + window_size - 1 ) {
+    uint64_t msg_len = std::min( ack_no + window_size - 1 - pushed_no, outbound_stream.bytes_buffered() );
+
+    Buffer buffer { std::string { outbound_stream.peek().substr( 0, msg_len ) } };
+    outbound_stream.pop( msg_len );
+
+    std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>();
+    message->seqno = Wrap32::wrap( pushed_no, isn_ );
+    message->SYN = ( pushed_no == 0 );
+    message->payload = buffer;
+    message->FIN = outbound_stream.is_finished();
+
+    pushed_no += message->sequence_length();
+    messages_to_be_sent.push( message );
+  }
 }
 
 TCPSenderMessage TCPSender::send_empty_message() const
@@ -52,18 +65,20 @@ void TCPSender::tick( const size_t ms_since_last_tick )
   (void)ms_since_last_tick;
 }
 
-Timer::Timer( uint64_t initial_RTO ) : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO(initial_RTO), running( false ) {}
+Timer::Timer( uint64_t initial_RTO )
+  : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO( initial_RTO ), running( false )
+{}
 
 void Timer::elapse( uint64_t time_elapsed )
 {
   if ( running ) {
-    timer -= std::min(timer, time_elapsed);
+    timer -= std::min( timer, time_elapsed );
   }
 }
 
 void Timer::double_RTO()
 {
-  if (RTO & (1ULL << 63)) {
+  if ( RTO & ( 1ULL << 63 ) ) {
     RTO = UINT64_MAX;
   } else {
     RTO <<= 1;
@@ -90,6 +105,7 @@ bool Timer::expired() const
   return timer == 0;
 }
 
-void Timer::restore_RTO() {
+void Timer::restore_RTO()
+{
   RTO = initial_RTO;
 }
