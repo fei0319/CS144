@@ -28,8 +28,8 @@ class TCPSender
   uint64_t initial_RTO_ms_;
 
   uint16_t window_size { 1 };
-  uint64_t received_ack_no { 1 };
-  uint64_t ack_no { 1 };
+  uint64_t received_ack_no { 0 };
+  uint64_t ack_no { 0 };
   uint64_t pushed_no { 0 };
   uint64_t retransmissions { 0 };
   std::queue<std::shared_ptr<TCPSenderMessage>> messages_to_be_sent {};
