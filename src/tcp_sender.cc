@@ -5,6 +5,51 @@
 
 using namespace std;
 
+Timer::Timer( uint64_t initial_RTO )
+  : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO( initial_RTO ), running( false )
+{}
+
+void Timer::elapse( uint64_t time_elapsed )
+{
+  if ( running ) {
+    timer -= std::min( timer, time_elapsed );
+  }
+}
+
+void Timer::double_RTO()
+{
+  if ( RTO & ( 1ULL << 63 ) ) {
+    RTO = UINT64_MAX;
+  } else {
+    RTO <<= 1;
+  }
+}
+
+void Timer::reset()
+{
+  timer = RTO;
+}
+
+void Timer::start()
+{
+  running = true;
+}
+
+void Timer::stop()
+{
+  running = false;
+}
+
+bool Timer::expired() const
+{
+  return timer == 0;
+}
+
+void Timer::restore_RTO()
+{
+  RTO = initial_RTO;
+}
+
 /* TCPSender constructor (uses a random ISN if none given) */
 TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
   : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) ), initial_RTO_ms_( initial_RTO_ms )
@@ -73,49 +118,4 @@ void TCPSender::tick( const size_t ms_since_last_tick )
 {
   // Your code here.
   (void)ms_since_last_tick;
-}
-
-Timer::Timer( uint64_t initial_RTO )
-  : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO( initial_RTO ), running( false )
-{}
-
-void Timer::elapse( uint64_t time_elapsed )
-{
-  if ( running ) {
-    timer -= std::min( timer, time_elapsed );
-  }
-}
-
-void Timer::double_RTO()
-{
-  if ( RTO & ( 1ULL << 63 ) ) {
-    RTO = UINT64_MAX;
-  } else {
-    RTO <<= 1;
-  }
-}
-
-void Timer::reset()
-{
-  timer = RTO;
-}
-
-void Timer::start()
-{
-  running = true;
-}
-
-void Timer::stop()
-{
-  running = false;
-}
-
-bool Timer::expired() const
-{
-  return timer == 0;
-}
-
-void Timer::restore_RTO()
-{
-  RTO = initial_RTO;
 }
