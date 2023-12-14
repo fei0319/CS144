@@ -12,7 +12,7 @@ class Timer
   bool running;
 
 public:
-  explicit Timer( uint64_t initial_RTO );
+  explicit Timer( uint64_t init_RTO );
   void elapse( uint64_t time_elapsed );
   void double_RTO();
   void reset();
@@ -28,11 +28,12 @@ class TCPSender
   uint64_t initial_RTO_ms_;
 
   uint16_t window_size { 1 };
+  uint64_t received_ack_no { 1 };
   uint64_t ack_no { 1 };
   uint64_t pushed_no { 0 };
   uint64_t retransmissions { 0 };
-  std::queue<std::shared_ptr<TCPSenderMessage>> messages_to_be_sent;
-  std::queue<std::shared_ptr<TCPSenderMessage>> outstanding_messages;
+  std::queue<std::shared_ptr<TCPSenderMessage>> messages_to_be_sent {};
+  std::queue<std::shared_ptr<TCPSenderMessage>> outstanding_messages {};
 
   Timer timer;
 

@@ -5,8 +5,8 @@
 
 using namespace std;
 
-Timer::Timer( uint64_t initial_RTO )
-  : timer( initial_RTO ), initial_RTO( initial_RTO ), RTO( initial_RTO ), running( false )
+Timer::Timer( uint64_t init_RTO )
+  : timer( init_RTO ), initial_RTO( init_RTO ), RTO( init_RTO ), running( false )
 {}
 
 void Timer::elapse( uint64_t time_elapsed )
@@ -70,6 +70,8 @@ uint64_t TCPSender::consecutive_retransmissions() const
 optional<TCPSenderMessage> TCPSender::maybe_send()
 {
   if ( !messages_to_be_sent.empty() ) {
+    timer.start();
+
     auto msg = messages_to_be_sent.front();
     messages_to_be_sent.pop();
     outstanding_messages.push( msg );
@@ -80,8 +82,9 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  while ( !outbound_stream.is_finished() && pushed_no < ack_no + window_size - 1 ) {
-    uint64_t msg_len = std::min( ack_no + window_size - 1 - pushed_no, outbound_stream.bytes_buffered() );
+  uint64_t allowed_no = received_ack_no + std::max( window_size, uint16_t { 1 } ) - 1;
+  while ( !outbound_stream.is_finished() && pushed_no < allowed_no ) {
+    uint64_t msg_len = std::min( allowed_no - pushed_no, outbound_stream.bytes_buffered() );
 
     Buffer buffer { std::string { outbound_stream.peek().substr( 0, msg_len ) } };
     outbound_stream.pop( msg_len );
@@ -111,13 +114,39 @@ TCPSenderMessage TCPSender::send_empty_message() const
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
   if ( msg.ackno.has_value() ) {
-    ack_no = std::max( ack_no, msg.ackno.value().unwrap( isn_, ack_no ) );
+    uint64_t received_ackno = msg.ackno.value().unwrap( isn_, ack_no );
+    while ( !outstanding_messages.empty()
+            && received_ackno >= ack_no + outstanding_messages.front()->sequence_length() ) {
+      ack_no += outstanding_messages.front()->sequence_length();
+      outstanding_messages.pop();
+
+      timer.restore_RTO();
+      retransmissions = 0;
+      if ( !outstanding_messages.empty() ) {
+        timer.start();
+      }
+    }
+    received_ack_no = std::max( received_ack_no, received_ackno );
+
+    if ( ack_no > pushed_no ) {
+      timer.stop();
+    }
   }
   window_size = msg.window_size;
 }
 
 void TCPSender::tick( const size_t ms_since_last_tick )
 {
-  // Your code here.
-  (void)ms_since_last_tick;
+  timer.elapse( ms_since_last_tick );
+  if ( timer.expired() ) {
+    messages_to_be_sent.push( outstanding_messages.front() );
+
+    if ( window_size ) {
+      timer.double_RTO();
+      retransmissions += 1;
+    }
+
+    timer.reset();
+    timer.start();
+  }
 }
