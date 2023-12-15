@@ -31,18 +31,15 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     bytes_valid += validity;
   }
 
-  uint64_t bytes_ready = 0;
-  while ( bytes_ready < buffer.size() && buffer[bytes_ready].first ) {
-    ++bytes_ready;
+  data.clear();
+  while ( !buffer.empty() && buffer.front().first ) {
+    front += 1;
+    bytes_valid -= 1;
+
+    data.push_back( buffer.front().second );
+    buffer.pop_front();
   }
-  if ( bytes_ready ) {
-    front += bytes_ready;
-    bytes_valid -= bytes_ready;
-    data.clear();
-    while ( bytes_ready-- ) {
-      data.push_back( buffer.front().second );
-      buffer.pop_front();
-    }
+  if ( !data.empty() ) {
     output.push( data );
   }
 
