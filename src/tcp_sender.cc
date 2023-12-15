@@ -1,6 +1,7 @@
 #include "tcp_sender.hh"
 #include "tcp_config.hh"
 
+#include <algorithm>
 #include <random>
 
 using namespace std;
@@ -43,9 +44,20 @@ bool Timer::expired() const
   return timer == 0;
 }
 
+bool Timer::is_stopped() const
+{
+  return !running || expired();
+}
+
 void Timer::restore_RTO()
 {
   RTO = initial_RTO;
+}
+
+void Timer::restart()
+{
+  reset();
+  start();
 }
 
 /* TCPSender constructor (uses a random ISN if none given) */
@@ -66,7 +78,9 @@ uint64_t TCPSender::consecutive_retransmissions() const
 optional<TCPSenderMessage> TCPSender::maybe_send()
 {
   if ( !messages_to_be_sent.empty() ) {
-    timer.start();
+    if ( timer.is_stopped() ) {
+      timer.restart();
+    }
 
     auto msg = messages_to_be_sent.front();
     messages_to_be_sent.pop();
@@ -77,21 +91,31 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
+  uint64_t allowed_no = received_ack_no + std::max( window_size, uint16_t { 1 } );
   if ( pushed_no == 0 ) {
     std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>( send_empty_message() );
+
+    if ( outbound_stream.is_finished() && !FIN_sent && allowed_no - pushed_no > 1 ) {
+      message->FIN = true;
+    }
+
+    if ( message->FIN ) {
+      FIN_sent = true;
+    }
+
     pushed_no += message->sequence_length();
     messages_to_be_sent.push( message );
     outstanding_messages.push( message );
   }
 
-  uint64_t allowed_no = received_ack_no + std::max( window_size, uint16_t { 1 } ) - 1;
   while ( ( outbound_stream.bytes_buffered() > 0 || ( outbound_stream.is_finished() && !FIN_sent ) )
           && pushed_no < allowed_no ) {
-    bool FIN = outbound_stream.is_finished() && !FIN_sent;
-    uint64_t msg_len = std::min( allowed_no - pushed_no - FIN, outbound_stream.bytes_buffered() );
-
+    uint64_t msg_len
+      = std::min( { allowed_no - pushed_no, outbound_stream.bytes_buffered(), TCPConfig::MAX_PAYLOAD_SIZE } );
     Buffer buffer { std::string { outbound_stream.peek().substr( 0, msg_len ) } };
     outbound_stream.pop( msg_len );
+
+    bool FIN = outbound_stream.is_finished() && !FIN_sent && allowed_no - pushed_no > msg_len;
 
     std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>();
     message->seqno = Wrap32::wrap( pushed_no, isn_ );
@@ -99,7 +123,7 @@ void TCPSender::push( Reader& outbound_stream )
     message->payload = buffer;
     message->FIN = FIN;
 
-    if ( FIN ) {
+    if ( message->FIN ) {
       FIN_sent = true;
     }
 
@@ -124,21 +148,21 @@ void TCPSender::receive( const TCPReceiverMessage& msg )
 {
   if ( msg.ackno.has_value() ) {
     uint64_t received_ackno = msg.ackno.value().unwrap( isn_, ack_no );
-    while ( !outstanding_messages.empty()
-            && received_ackno >= ack_no + outstanding_messages.front()->sequence_length() ) {
-      ack_no += outstanding_messages.front()->sequence_length();
-      outstanding_messages.pop();
+    if ( received_ackno <= pushed_no ) {
+      while ( !outstanding_messages.empty()
+              && received_ackno >= ack_no + outstanding_messages.front()->sequence_length() ) {
+        ack_no += outstanding_messages.front()->sequence_length();
+        outstanding_messages.pop();
 
-      timer.restore_RTO();
-      retransmissions = 0;
-      if ( !outstanding_messages.empty() ) {
-        timer.start();
+        timer.restore_RTO();
+        retransmissions = 0;
+        if ( !outstanding_messages.empty() ) {
+          timer.restart();
+        } else {
+          timer.stop();
+        }
       }
-    }
-    received_ack_no = std::max( received_ack_no, received_ackno );
-
-    if ( ack_no > pushed_no ) {
-      timer.stop();
+      received_ack_no = std::max( received_ack_no, received_ackno );
     }
   }
   window_size = msg.window_size;
@@ -155,7 +179,6 @@ void TCPSender::tick( const size_t ms_since_last_tick )
       retransmissions += 1;
     }
 
-    timer.reset();
-    timer.start();
+    timer.restart();
   }
 }

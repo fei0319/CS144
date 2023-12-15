@@ -19,7 +19,9 @@ public:
   void start();
   void stop();
   bool expired() const;
+  bool is_stopped() const;
   void restore_RTO();
+  void restart();
 };
 
 class TCPSender
