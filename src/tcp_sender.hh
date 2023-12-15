@@ -25,7 +25,6 @@ public:
 class TCPSender
 {
   Wrap32 isn_;
-  uint64_t initial_RTO_ms_;
 
   uint16_t window_size { 1 };
   uint64_t received_ack_no { 0 };
@@ -36,6 +35,8 @@ class TCPSender
   std::queue<std::shared_ptr<TCPSenderMessage>> outstanding_messages {};
 
   Timer timer;
+
+  bool FIN_sent { false };
 
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */

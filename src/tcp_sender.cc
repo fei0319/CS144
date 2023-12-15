@@ -5,9 +5,7 @@
 
 using namespace std;
 
-Timer::Timer( uint64_t init_RTO )
-  : timer( init_RTO ), initial_RTO( init_RTO ), RTO( init_RTO ), running( false )
-{}
+Timer::Timer( uint64_t init_RTO ) : timer( init_RTO ), initial_RTO( init_RTO ), RTO( init_RTO ), running( false ) {}
 
 void Timer::elapse( uint64_t time_elapsed )
 {
@@ -52,9 +50,7 @@ void Timer::restore_RTO()
 
 /* TCPSender constructor (uses a random ISN if none given) */
 TCPSender::TCPSender( uint64_t initial_RTO_ms, optional<Wrap32> fixed_isn )
-  : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) )
-  , initial_RTO_ms_( initial_RTO_ms )
-  , timer( initial_RTO_ms )
+  : isn_( fixed_isn.value_or( Wrap32 { random_device()() } ) ), timer( initial_RTO_ms )
 {}
 
 uint64_t TCPSender::sequence_numbers_in_flight() const
@@ -81,25 +77,31 @@ optional<TCPSenderMessage> TCPSender::maybe_send()
 
 void TCPSender::push( Reader& outbound_stream )
 {
-  if (pushed_no == 0) {
-    std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>(send_empty_message());
+  if ( pushed_no == 0 ) {
+    std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>( send_empty_message() );
     pushed_no += message->sequence_length();
     messages_to_be_sent.push( message );
     outstanding_messages.push( message );
   }
 
   uint64_t allowed_no = received_ack_no + std::max( window_size, uint16_t { 1 } ) - 1;
-  while ( outbound_stream.bytes_buffered() > 0 && pushed_no < allowed_no ) {
-    uint64_t msg_len = std::min( allowed_no - pushed_no, outbound_stream.bytes_buffered() );
+  while ( ( outbound_stream.bytes_buffered() > 0 || ( outbound_stream.is_finished() && !FIN_sent ) )
+          && pushed_no < allowed_no ) {
+    bool FIN = outbound_stream.is_finished() && !FIN_sent;
+    uint64_t msg_len = std::min( allowed_no - pushed_no - FIN, outbound_stream.bytes_buffered() );
 
     Buffer buffer { std::string { outbound_stream.peek().substr( 0, msg_len ) } };
     outbound_stream.pop( msg_len );
 
     std::shared_ptr<TCPSenderMessage> message = std::make_shared<TCPSenderMessage>();
     message->seqno = Wrap32::wrap( pushed_no, isn_ );
-    message->SYN = ( pushed_no == 0 );
+    message->SYN = false;
     message->payload = buffer;
-    message->FIN = outbound_stream.is_finished();
+    message->FIN = FIN;
+
+    if ( FIN ) {
+      FIN_sent = true;
+    }
 
     pushed_no += message->sequence_length();
     messages_to_be_sent.push( message );
