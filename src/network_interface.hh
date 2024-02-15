@@ -11,6 +11,13 @@
 #include <unordered_map>
 #include <utility>
 
+template <>
+struct std::hash<Address> {
+  size_t operator()(const Address &b) const {
+    return std::hash<std::string>()(b.to_string());
+  }
+};
+
 // A "network interface" that connects IP (the internet layer, or network layer)
 // with Ethernet (the network access layer, or link layer).
 
@@ -35,11 +42,46 @@
 class NetworkInterface
 {
 private:
+  // Time that a mapping is kept in cache
+  static const size_t EXPIRE_TIME_IN_MS = 30000;
+  static const size_t ARP_REQUEST_INTERVAL = 5000;
+
+  // Timestamp in ms of the `NetworkInterface`.
+  // It is incremented when `tick` is called and used for determining when a mapping was set up.
+  size_t timestamp {0};
+
+  // Mappings from IP addresses to ethernet addresses and their timestamps when they were established
+  std::unordered_map<Address, std::pair<EthernetAddress, size_t>> mappings {};
+
+  // A buffer storing unsent datagrams, which will be sent immediately when an ethernet address for an
+  // IP address of a certain datagram is known.
+  std::unordered_map<Address, std::queue<InternetDatagram>> buffer_datagrams {};
+
+  // A buffer storing unsent ethernet frames, which come from `buffer_datagrams` when their ethernet
+  // addresses are determined. The frames will be sent when `maybe_send` is called.
+  std::queue<EthernetFrame> buffer_frames {};
+
+  // All ARP requests in flight and the timestamps when they are sent
+  std::unordered_map<Address, size_t> in_flight_ARP {};
+
   // Ethernet (known as hardware, network-access, or link-layer) address of the interface
   EthernetAddress ethernet_address_;
 
   // IP (known as Internet-layer or network-layer) address of the interface
   Address ip_address_;
+
+  // Buffer an ethernet frame for sending
+  void buffer_for_sending(const EthernetFrame &);
+  // Buffer an internet datagram for sending
+  void buffer_for_sending(const InternetDatagram &, const EthernetAddress &);
+
+  // Look up an existing mapping for a certain address.
+  // If it does not exist or has expired, and no previous ARP request sent within `ARP_REQUEST_INTERVAL`ms
+  // is for this address, an ARP request will be sent.
+  std::optional<EthernetAddress> look_for_mapping(const Address& address );
+
+  // Send an ARP request for an address
+  void send_ARP_request_for( const Address&);
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
