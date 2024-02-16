@@ -83,6 +83,10 @@ private:
   // Send an ARP request for an address
   void send_ARP_request_for( const Address&);
 
+  // Add a mapping from IP address to ethernet address. If there are any buffered datagram to the
+  // added IP address, buffer them for sending.
+  void add_mapping(const Address &, const EthernetAddress &);
+
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)
   // addresses

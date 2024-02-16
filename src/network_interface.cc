@@ -98,3 +98,15 @@ void NetworkInterface::send_ARP_request_for(const Address &address) {
 
   buffer_for_sending(frame);
 }
+
+void NetworkInterface::add_mapping( const Address& address, const EthernetAddress& ethernet_address) {
+  mappings[address] = std::make_pair(ethernet_address, timestamp);
+  if (buffer_datagrams.contains(address)) {
+    auto &q = buffer_datagrams[address];
+    while (!q.empty()) {
+      buffer_for_sending(q.front(), ethernet_address);
+      q.pop();
+    }
+    buffer_datagrams.erase(address);
+  }
+}
