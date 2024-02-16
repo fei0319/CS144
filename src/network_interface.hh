@@ -11,11 +11,10 @@
 #include <unordered_map>
 #include <utility>
 
-template <>
-struct std::hash<Address> {
-  size_t operator()(const Address &b) const {
-    return std::hash<std::string>()(b.to_string());
-  }
+template<>
+struct std::hash<Address>
+{
+  size_t operator()( const Address& b ) const { return std::hash<std::string>()( b.to_string() ); }
 };
 
 // A "network interface" that connects IP (the internet layer, or network layer)
@@ -48,7 +47,7 @@ private:
 
   // Timestamp in ms of the `NetworkInterface`.
   // It is incremented when `tick` is called and used for determining when a mapping was set up.
-  size_t timestamp {0};
+  size_t timestamp { 0 };
 
   // Mappings from IP addresses to ethernet addresses and their timestamps when they were established
   std::unordered_map<Address, std::pair<EthernetAddress, size_t>> mappings {};
@@ -71,21 +70,21 @@ private:
   Address ip_address_;
 
   // Buffer an ethernet frame for sending
-  void buffer_for_sending(const EthernetFrame &);
+  void buffer_for_sending( const EthernetFrame& );
   // Buffer an internet datagram for sending
-  void buffer_for_sending(const InternetDatagram &, const EthernetAddress &);
+  void buffer_for_sending( const InternetDatagram&, const EthernetAddress& );
 
   // Look up an existing mapping for a certain address.
   // If it does not exist or has expired, and no previous ARP request sent within `ARP_REQUEST_INTERVAL`ms
   // is for this address, an ARP request will be sent.
-  std::optional<EthernetAddress> look_for_mapping(const Address& address );
+  std::optional<EthernetAddress> look_for_mapping( const Address& address );
 
   // Send an ARP request for an address
-  void send_ARP_request_for( const Address&);
+  void send_ARP_request_for( const Address& );
 
   // Add a mapping from IP address to ethernet address. If there are any buffered datagram to the
   // added IP address, buffer them for sending.
-  void add_mapping(const Address &, const EthernetAddress &);
+  void add_mapping( const Address&, const EthernetAddress& );
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)

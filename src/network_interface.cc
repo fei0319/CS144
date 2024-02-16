@@ -23,10 +23,10 @@ NetworkInterface::NetworkInterface( const EthernetAddress& ethernet_address, con
 void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Address& next_hop )
 {
   auto ethernet_address = look_for_mapping( next_hop );
-  if (ethernet_address.has_value()) {
-    buffer_for_sending(dgram, ethernet_address.value());
+  if ( ethernet_address.has_value() ) {
+    buffer_for_sending( dgram, ethernet_address.value() );
   } else {
-    buffer_datagrams[next_hop].push(dgram);
+    buffer_datagrams[next_hop].push( dgram );
   }
 }
 
@@ -45,7 +45,7 @@ void NetworkInterface::tick( const size_t ms_since_last_tick )
 
 optional<EthernetFrame> NetworkInterface::maybe_send()
 {
-  if (buffer_frames.empty()) {
+  if ( buffer_frames.empty() ) {
     return {};
   }
   auto frame = buffer_frames.front();
@@ -54,32 +54,35 @@ optional<EthernetFrame> NetworkInterface::maybe_send()
 }
 std::optional<EthernetAddress> NetworkInterface::look_for_mapping( const Address& address )
 {
-  if (mappings.contains(address)) {
-    auto &[ethernet_address, added_time] = mappings[address];
-    if (timestamp - added_time <= EXPIRE_TIME_IN_MS) {
+  if ( mappings.contains( address ) ) {
+    auto& [ethernet_address, added_time] = mappings[address];
+    if ( timestamp - added_time <= EXPIRE_TIME_IN_MS ) {
       return ethernet_address;
     }
-    mappings.erase(address);
+    mappings.erase( address );
   }
-  send_ARP_request_for(address);
+  send_ARP_request_for( address );
 }
 
-void NetworkInterface::buffer_for_sending( const EthernetFrame& frame) {
-  buffer_frames.push(frame);
+void NetworkInterface::buffer_for_sending( const EthernetFrame& frame )
+{
+  buffer_frames.push( frame );
 }
 
-void NetworkInterface::buffer_for_sending( const InternetDatagram& dgram, const EthernetAddress& ethernet_address) {
+void NetworkInterface::buffer_for_sending( const InternetDatagram& dgram, const EthernetAddress& ethernet_address )
+{
   EthernetFrame frame;
   frame.header.dst = ethernet_address;
   frame.header.src = ethernet_address_;
   frame.header.type = EthernetHeader::TYPE_IPv4;
-  frame.payload = serialize(dgram);
+  frame.payload = serialize( dgram );
 
-  buffer_for_sending(frame);
+  buffer_for_sending( frame );
 }
 
-void NetworkInterface::send_ARP_request_for(const Address &address) {
-  if (in_flight_ARP.contains(address) && timestamp - in_flight_ARP[address] <= ARP_REQUEST_INTERVAL) {
+void NetworkInterface::send_ARP_request_for( const Address& address )
+{
+  if ( in_flight_ARP.contains( address ) && timestamp - in_flight_ARP[address] <= ARP_REQUEST_INTERVAL ) {
     return;
   }
   in_flight_ARP[address] = timestamp;
@@ -94,19 +97,20 @@ void NetworkInterface::send_ARP_request_for(const Address &address) {
   frame.header.dst = ETHERNET_BROADCAST;
   frame.header.src = ethernet_address_;
   frame.header.type = EthernetHeader::TYPE_ARP;
-  frame.payload = serialize(message);
+  frame.payload = serialize( message );
 
-  buffer_for_sending(frame);
+  buffer_for_sending( frame );
 }
 
-void NetworkInterface::add_mapping( const Address& address, const EthernetAddress& ethernet_address) {
-  mappings[address] = std::make_pair(ethernet_address, timestamp);
-  if (buffer_datagrams.contains(address)) {
-    auto &q = buffer_datagrams[address];
-    while (!q.empty()) {
-      buffer_for_sending(q.front(), ethernet_address);
+void NetworkInterface::add_mapping( const Address& address, const EthernetAddress& ethernet_address )
+{
+  mappings[address] = std::make_pair( ethernet_address, timestamp );
+  if ( buffer_datagrams.contains( address ) ) {
+    auto& q = buffer_datagrams[address];
+    while ( !q.empty() ) {
+      buffer_for_sending( q.front(), ethernet_address );
       q.pop();
     }
-    buffer_datagrams.erase(address);
+    buffer_datagrams.erase( address );
   }
 }
