@@ -77,6 +77,7 @@ std::optional<EthernetAddress> NetworkInterface::look_for_mapping( const Address
     mappings.erase( address );
   }
   send_ARP_request_for( address );
+  return {};
 }
 
 void NetworkInterface::buffer_for_sending( const EthernetFrame& frame )
