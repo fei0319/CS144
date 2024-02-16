@@ -81,10 +81,16 @@ private:
 
   // Send an ARP request for an address
   void send_ARP_request_for( const Address& );
+  // Send an ARP reply to an ethernet address
+  void send_ARP_reply_to( const EthernetAddress&, const Address& );
 
   // Add a mapping from IP address to ethernet address. If there are any buffered datagram to the
   // added IP address, buffer them for sending.
   void add_mapping( const Address&, const EthernetAddress& );
+
+  // Handle the payload of an ARP ethernet frame. Set up mapping for the source IP and ethernet addresses,
+  // and send an ARP reply if the frame is an ARP request for our IP address.
+  void handle_ARP_payload( const std::vector<Buffer>& );
 
 public:
   // Construct a network interface with given Ethernet (network-access-layer) and IP (internet-layer)

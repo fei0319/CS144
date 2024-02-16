@@ -33,7 +33,22 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 // frame: the incoming Ethernet frame
 optional<InternetDatagram> NetworkInterface::recv_frame( const EthernetFrame& frame )
 {
-  (void)frame;
+  if ( frame.header.dst != ethernet_address_ && frame.header.dst != ETHERNET_BROADCAST ) {
+    return {};
+  }
+  InternetDatagram dgram;
+  switch ( frame.header.type ) {
+    case EthernetHeader::TYPE_IPv4:
+      if ( parse( dgram, frame.payload ) ) {
+        return dgram;
+      }
+      break;
+    case EthernetHeader::TYPE_ARP:
+      handle_ARP_payload( frame.payload );
+      break;
+    default:
+      cerr << "Unknown ethernet frame type\n";
+  }
   return {};
 }
 
@@ -102,6 +117,24 @@ void NetworkInterface::send_ARP_request_for( const Address& address )
   buffer_for_sending( frame );
 }
 
+void NetworkInterface::send_ARP_reply_to( const EthernetAddress& ethernet_address, const Address& address )
+{
+  ARPMessage message;
+  message.opcode = ARPMessage::OPCODE_REPLY;
+  message.sender_ethernet_address = ethernet_address_;
+  message.sender_ip_address = ip_address_.ipv4_numeric();
+  message.target_ethernet_address = ethernet_address;
+  message.target_ip_address = address.ipv4_numeric();
+
+  EthernetFrame frame;
+  frame.header.dst = ethernet_address;
+  frame.header.src = ethernet_address_;
+  frame.header.type = EthernetHeader::TYPE_ARP;
+  frame.payload = serialize( message );
+
+  buffer_for_sending( frame );
+}
+
 void NetworkInterface::add_mapping( const Address& address, const EthernetAddress& ethernet_address )
 {
   mappings[address] = std::make_pair( ethernet_address, timestamp );
@@ -112,5 +145,17 @@ void NetworkInterface::add_mapping( const Address& address, const EthernetAddres
       q.pop();
     }
     buffer_datagrams.erase( address );
+  }
+}
+
+void NetworkInterface::handle_ARP_payload( const vector<Buffer>& payload )
+{
+  ARPMessage message;
+  parse( message, payload );
+
+  add_mapping( Address::from_ipv4_numeric( message.sender_ip_address ), message.sender_ethernet_address );
+
+  if ( message.opcode == ARPMessage::OPCODE_REQUEST && message.target_ip_address == ip_address_.ipv4_numeric() ) {
+    send_ARP_reply_to( message.sender_ethernet_address, Address::from_ipv4_numeric( message.sender_ip_address ) );
   }
 }
