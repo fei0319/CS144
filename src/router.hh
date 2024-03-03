@@ -69,7 +69,7 @@ class Router
 
   // Perform a longest prefix matching and return the matched Address and
   // interface_num if found.
-  std::optional<std::pair<std::optional<Address>, size_t>> match( const Address& address );
+  std::optional<std::pair<std::optional<Address>, size_t>> match( const Address& address ) const;
 
 public:
   // Add an interface to the router

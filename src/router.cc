@@ -32,7 +32,7 @@ void Router::add_route( const uint32_t route_prefix,
   node->value = { next_hop, interface_num };
 }
 
-std::optional<std::pair<std::optional<Address>, size_t>> Router::match( const Address& address )
+std::optional<std::pair<std::optional<Address>, size_t>> Router::match( const Address& address ) const
 {
   const uint32_t raw_address = address.ipv4_numeric();
   std::optional<std::pair<std::optional<Address>, size_t>> result {};
