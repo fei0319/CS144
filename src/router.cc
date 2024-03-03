@@ -20,10 +20,17 @@ void Router::add_route( const uint32_t route_prefix,
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
 
-  (void)route_prefix;
-  (void)prefix_length;
-  (void)next_hop;
-  (void)interface_num;
+  std::shared_ptr<Node> node = root;
+  for ( size_t i = 0; i < prefix_length; ++i ) {
+    unsigned int bit = static_cast<bool>( route_prefix & ( 1U << ( 31 - i ) ) );
+    if ( node->next.at( bit ) == nullptr ) {
+      node->next.at( bit ) = std::make_shared<Node>();
+    }
+    node = node->next.at( bit );
+  }
+
+  node->next_hop = next_hop;
+  node->interface_num = interface_num;
 }
 
 void Router::route() {}

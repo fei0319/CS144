@@ -52,8 +52,22 @@ public:
 // performs longest-prefix-match routing between them.
 class Router
 {
+  static const size_t NULL_INTERFACE = static_cast<uint64_t>( -1 );
+
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
+
+  // This abstracts nodes of a trie. Trie is a kind of data structure that
+  // can be used to match prefixes.
+  struct Node
+  {
+    std::array<std::shared_ptr<Node>, 2> next { nullptr, nullptr };
+    std::optional<Address> next_hop { std::nullopt };
+    size_t interface_num { NULL_INTERFACE };
+  };
+
+  // The root node of the trie.
+  std::shared_ptr<Node> root;
 
 public:
   // Add an interface to the router
