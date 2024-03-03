@@ -72,4 +72,13 @@ void Router::send_datagram( InternetDatagram&& dgram )
   }
 }
 
-void Router::route() {}
+void Router::route()
+{
+  for ( size_t i = 0; i < interfaces_.size(); ++i ) {
+    auto dgram = interface( i ).maybe_receive();
+    while ( dgram.has_value() ) {
+      send_datagram( std::move( dgram.value() ) );
+      dgram = interface( i ).maybe_receive();
+    }
+  }
+}
