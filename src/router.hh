@@ -65,14 +65,14 @@ class Router
   };
 
   // The root node of the trie.
-  std::shared_ptr<Node> root;
+  std::shared_ptr<Node> root { std::make_shared<Node>() };
 
   // Perform a longest prefix matching and return the matched Address and
   // interface_num if found.
   std::optional<std::pair<std::optional<Address>, size_t>> match( uint32_t raw_address ) const;
 
   // Send a single internet datagram to appropriate interface and address.
-  void send_datagram( InternetDatagram&& dgram );
+  void route_datagram( InternetDatagram&& dgram );
 
 public:
   // Add an interface to the router

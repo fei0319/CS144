@@ -55,13 +55,14 @@ std::optional<std::pair<std::optional<Address>, size_t>> Router::match( uint32_t
   return result;
 }
 
-void Router::send_datagram( InternetDatagram&& dgram )
+void Router::route_datagram( InternetDatagram&& dgram )
 {
   InternetDatagram datagram = std::move( dgram );
   if ( datagram.header.ttl <= 1U ) {
     return;
   }
   datagram.header.ttl -= 1;
+  datagram.header.compute_checksum();
 
   auto matching = match( dgram.header.dst );
   if ( matching.has_value() ) {
@@ -77,7 +78,7 @@ void Router::route()
   for ( size_t i = 0; i < interfaces_.size(); ++i ) {
     auto dgram = interface( i ).maybe_receive();
     while ( dgram.has_value() ) {
-      send_datagram( std::move( dgram.value() ) );
+      route_datagram( std::move( dgram.value() ) );
       dgram = interface( i ).maybe_receive();
     }
   }
