@@ -52,7 +52,6 @@ public:
 // performs longest-prefix-match routing between them.
 class Router
 {
-  static const size_t NULL_INTERFACE = static_cast<uint64_t>( -1 );
 
   // The router's collection of network interfaces
   std::vector<AsyncNetworkInterface> interfaces_ {};
@@ -62,12 +61,15 @@ class Router
   struct Node
   {
     std::array<std::shared_ptr<Node>, 2> next { nullptr, nullptr };
-    std::optional<Address> next_hop { std::nullopt };
-    size_t interface_num { NULL_INTERFACE };
+    std::optional<std::pair<std::optional<Address>, size_t>> value {};
   };
 
   // The root node of the trie.
   std::shared_ptr<Node> root;
+
+  // Perform a longest prefix matching and return the matched Address and
+  // interface_num if found.
+  std::optional<std::pair<std::optional<Address>, size_t>> match( const Address& address );
 
 public:
   // Add an interface to the router

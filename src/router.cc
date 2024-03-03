@@ -29,8 +29,31 @@ void Router::add_route( const uint32_t route_prefix,
     node = node->next.at( bit );
   }
 
-  node->next_hop = next_hop;
-  node->interface_num = interface_num;
+  node->value = { next_hop, interface_num };
+}
+
+std::optional<std::pair<std::optional<Address>, size_t>> Router::match( const Address& address )
+{
+  const uint32_t raw_address = address.ipv4_numeric();
+  std::optional<std::pair<std::optional<Address>, size_t>> result {};
+
+  std::shared_ptr<Node> node = root;
+  for ( size_t i = 0; i < 32; ++i ) {
+    if ( node->value.has_value() ) {
+      result = node->value;
+    }
+
+    unsigned int bit = static_cast<bool>( raw_address & ( 1U << ( 31 - i ) ) );
+    if ( node->next.at( bit ) == nullptr ) {
+      break;
+    }
+    node = node->next.at( bit );
+  }
+
+  if ( node->value.has_value() ) {
+    result = node->value;
+  }
+  return result;
 }
 
 void Router::route() {}
