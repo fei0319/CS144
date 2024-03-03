@@ -69,7 +69,10 @@ class Router
 
   // Perform a longest prefix matching and return the matched Address and
   // interface_num if found.
-  std::optional<std::pair<std::optional<Address>, size_t>> match( const Address& address ) const;
+  std::optional<std::pair<std::optional<Address>, size_t>> match( uint32_t raw_address ) const;
+
+  // Send a single internet datagram to appropriate interface and address.
+  void send_datagram( InternetDatagram&& dgram );
 
 public:
   // Add an interface to the router

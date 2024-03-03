@@ -32,9 +32,8 @@ void Router::add_route( const uint32_t route_prefix,
   node->value = { next_hop, interface_num };
 }
 
-std::optional<std::pair<std::optional<Address>, size_t>> Router::match( const Address& address ) const
+std::optional<std::pair<std::optional<Address>, size_t>> Router::match( uint32_t raw_address ) const
 {
-  const uint32_t raw_address = address.ipv4_numeric();
   std::optional<std::pair<std::optional<Address>, size_t>> result {};
 
   std::shared_ptr<Node> node = root;
@@ -54,6 +53,23 @@ std::optional<std::pair<std::optional<Address>, size_t>> Router::match( const Ad
     result = node->value;
   }
   return result;
+}
+
+void Router::send_datagram( InternetDatagram&& dgram )
+{
+  InternetDatagram datagram = std::move( dgram );
+  if ( datagram.header.ttl <= 1U ) {
+    return;
+  }
+  datagram.header.ttl -= 1;
+
+  auto matching = match( dgram.header.dst );
+  if ( matching.has_value() ) {
+    const auto& [next_hop, interface_num] = matching.value();
+    Address address = next_hop.has_value() ? next_hop.value() : Address::from_ipv4_numeric( datagram.header.dst );
+
+    interface( interface_num ).send_datagram( datagram, address );
+  }
 }
 
 void Router::route() {}
